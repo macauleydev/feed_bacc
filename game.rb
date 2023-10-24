@@ -1,6 +1,6 @@
 class Game
   def initialize
-    @guesses_allowed = 10
+    @guesses_allowed = 12
     @guesses = []
     @responses = []
     @human_codebreaker = nil
