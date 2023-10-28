@@ -6,8 +6,13 @@ class Game
     @human_codebreaker = nil
     @code = nil
     @candidates = initial_candidates
+    @left_tab = 11
+    @right_tab = 34
+    @center_tab = 25
+    # @center_tab = ((@left_tab + @right_tab) / 2.0).ceil
+    @line_width = @center_tab * 2 - 1
   end
-  attr_reader :guesses_allowed
+  attr_reader :guesses_allowed, :left_tab, :right_tab, :center_tab, :line_width
   attr_accessor :guesses, :responses, :human_codebreaker, :code, :candidates
 
   def initial_candidates
@@ -76,59 +81,109 @@ class Game
     play_game
   end
 
+  def print_center(array_of_lines)
+    array_of_lines.each do |line|
+      if line.kind_of? String
+        output = line.center(line_width)
+      elsif line.kind_of? Array
+        (left, center, right) =
+          case line.size
+          when 1 then ['', line[0], '']
+          when 2 then [line[0], '', line[1]]
+          when 3 then line
+          when (4..) then [line[0], line[1..-2].join(' '), line[-1]]
+          end
+
+        triple_aligned = center.center(line_width)
+        triple_aligned[left_tab, left.length] = left
+        triple_aligned[right_tab, right.length] = right
+
+        outside_space = (line_width - center.length)
+        left_space = (outside_space/2.0).floor
+        right_space = (outside_space/2.0).ceil
+        left_hugging_center = left.rjust(left_space)
+        right_hugging_center = right.ljust(right_space)
+        centered = left_hugging_center + center + right_hugging_center
+
+        # centered = (left + center + right).center(line_width)
+        # centered = center.center(line_width)
+        # center_left_edge = (center_tab - (center.length / 2.0).floor) - 1
+        # center_right_edge = (center_tab + (center.length / 2.0).ceil) - 1
+        # centered[center_left_edge - left.length, left.length] = left
+        # centered[center_right_edge, right.length] = right
+
+        room_for_left_and_center_alignment = center == '' || (center_tab - left_tab > left.length)
+
+        output =
+          room_for_left_and_center_alignment ?
+            triple_aligned :
+            centered
+        end
+      puts output
+    end
+  end
+
+  def prompt_center(hash = {'' => ''})
+    choice = nil
+    until hash.keys.include?(choice) do
+      print ' ' * (center_tab - 1)
+      choice = gets.chomp.upcase
+    end
+    hash[choice]
+  end
   def introduce_game
-    puts
-    puts "           ..........................."
-    puts "           ....      FEED-        ...."
-    puts "           o...      BACC         o..."
-    puts "           *...                   oo.."
-    puts "           oo..       (a          ooo."
-    puts "           *o..      text-        oooo"
-    puts "           **..      based        *..."
-    puts "           ooo.     tribute       *o.."
-    puts "           *oo.       to          *oo."
-    puts "           **o.       the         *ooo"
-    puts "           ***.     classic       **.."
-    puts "           oooo       code-       **o."
-    puts "           *ooo     breaking,     **oo"
-    puts "           **oo       game,       ***."
-    puts "           ****    Master Mind)   ****"
-    puts "           ***************************"
-    puts
-    puts "            One player MAKES a CODE"
-    puts "           as a sequence of 4 letters,"
-    puts "           each from the set, ABCDEF."
-    puts
-    puts "         The other player BREAKS the CODE"
-    puts "           in a maximum of #{guesses_allowed} guesses."
-    puts
-    puts "       Each guess generates feedback such as"
-    puts
-    puts "           *o..        or         **oo"
-    puts
-    puts "                  which tallies:"
-    puts
-    puts "           *  (correctly-placed letters)"
-    puts "           o  (out-of-place letters)"
-    puts "           .  (superfluous letters)"
-    puts
-    print "                       "
-    gets
+    introduction = [
+      '',
+      "...........................",
+      %w[.... FEED- ....],
+      %w[o... BACC o...],
+      %w[*...                   oo..],
+      %w[oo..       (a          ooo.],
+      %w[*o..      text-        oooo],
+      %w[**..      based        *...],
+      %w[ooo.     tribute       *o..],
+      %w[*oo.       to          *oo.],
+      %w[**o.       the         *ooo],
+      %w[***.     classic       **..],
+      %w[oooo       code-       **o.],
+      %w[*ooo     breaking,     **oo],
+      %w[**oo       game,       ***.],
+      %w[****    Master Mind)   ****],
+      %w[***************************],
+      "",
+      "One player MAKES a CODE",
+      "as a sequence of 4 letters,",
+      "each from the set, ABCDEF.",
+      "",
+      "The other player BREAKS the CODE",
+      "in a maximum of #{guesses_allowed} guesses.",
+      "",
+      "Each guess generates feedback such as",
+      ""                                      ,
+      %w[*o.. or **oo],
+      "",
+      "which tallies:",
+      "",
+      ["*  (correctly-placed letters)", '', ''],
+      ["o  (out-of-place letters)", '', ''],
+      [".  (superfluous letters)", '', ''],
+      ""
+    ]
+    print_center(introduction)
+    prompt_center
   end
 
   def choose_roles
-    puts "               Choose your role: "
-    puts "      M. Make a Code      B. Break the Code"
-    choice = ''
-    until %w[M B].include?(choice)
-      print "                       "
-      choice = gets.chomp.upcase
-    end
+    print_center([
+      "Choose your role:",
+      ["M. Make a Code", "     ", "B. Break the Code"]
+    ])
 
-    self.human_codebreaker = case choice
-                             when 'B' then true
-                             when 'M' then false
-                             end
+    self.human_codebreaker =
+     prompt_center({
+      "B" => true,
+      "M" => false,
+     })
   end
 
   def play_game
@@ -137,31 +192,32 @@ class Game
     puts
 
     if guesses.last == code
-      if self.human_codebreaker
-        print "Congratulations! You broke the "
-      else
-        print "\nWhoa! The computer broke your "
-      end
-      print "code in #{guesses.length} guesses.\n"
+      winner_broke =
+        self.human_codebreaker ?
+        "Congratulations! You broke the " :
+        "\nWhoa! The computer broke your "
+      how_soon = guesses.count > 1 ?
+       "in #{guesses.count} guesses." :
+       "on the first guess!"
+      print "#{winner_broke} code #{how_soon}\n"
     else
-      puts "          So close! And yet so far."
-      puts
-      puts "              The code was #{code}."
+      print_center([
+        "So close! And yet so far.",
+        "",
+        "The code was #{code}."
+      ])
     end
 
     puts
-    print "Play again? (Y/N) "
-    choice = ''
-    until ['Y', 'N'].include?(choice.upcase)
-      choice = gets.chomp.upcase
-    end
-    puts
-
-    if choice == 'Y'
-      replay
-    else
-      exit
-    end
+    print_center([
+      "Play again?",
+      "(Y/N)"
+    ])
+    action = prompt_center({
+      'Y' => :replay,
+      'N' => :exit
+    })
+    send(action)
   end
 
   def make_code
@@ -189,10 +245,16 @@ class Game
   end
 
   def break_code
-    print "\n"
-    puts "           GUESS    (case-        FEED-   "
-    puts "                  insensitive)    BACC    "
-    puts
+    print_center([
+      '',
+      %w[GUESS (case- FEED-],
+      ['', 'insensitive)', 'BACC'],
+      ''
+    ])
+    # print "\n"
+    # puts "           GUESS    (case-        FEED-   "
+    # puts "                  insensitive)    BACC    "
+    # puts
     (1..guesses_allowed).each do |i|
       puts "Make your final guess!\n" if i == guesses_allowed
       print "       "
