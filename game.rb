@@ -234,15 +234,21 @@ class Game
       ['', 'insensitive)', 'BACC'],
       ''
     )
-    while guesses.count <= guesses_allowed
-      puts "Make your final guess!\n" if guesses.count == guesses_allowed
-      make_guess
+    while guesses.count < guesses_allowed
+      puts "Make your final guess!\n" if guesses.count == guesses_allowed - 1
+      guess_code
+      respond_to_guess
+      if human_codebreaker
+        print "\n"
+      elsif guesses.count < guesses_allowed && code != guesses.last
+        gets
+      end
       break if guesses.last == code
       consolidate_guesses unless human_codebreaker
     end
   end
 
-  def make_guess
+  def guess_code
     if human_codebreaker
       guesses.push(
         prompt(
@@ -255,14 +261,14 @@ class Game
       guesses.push(candidates.first || 'WXYZ')
       print "#{guesses.last}\n"
     end
+  end
 
+  def respond_to_guess
     responses.push feedback(code, guesses.last)
     print_center(
       ['', "`==>", responses.last],
       final_whitespace: " "
     )
-    gets unless guesses.length == 10 || code == guesses.last || human_codebreaker
-    print "\n" if human_codebreaker
   end
 
   def consolidate_guesses
