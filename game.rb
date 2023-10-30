@@ -143,7 +143,7 @@ class Game
     puts
     print_center(
       ("." * 27),
-      %w[....      FEED-        ....],
+      %w[....      FEED_        ....],
       %w[o...      BACC         o...],
       %w[*...                   oo..],
       %w[oo..       (a          ooo.],
@@ -219,7 +219,7 @@ class Game
 
   def break_code
     print_center(
-      %w[GUESS (case- FEED-],
+      %w[GUESS (case- FEED_],
       ['', 'insensitive)', 'BACC'],
       ''
     )
