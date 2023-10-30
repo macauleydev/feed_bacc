@@ -2,90 +2,17 @@ class Game
   def initialize
     @guesses_allowed = 12
     @human_codebreaker = nil
-    @code = nil
+    @the_code = nil
     @candidates = initial_candidates
     @guesses = []
     @responses = []
     @left_tab = 11
     @right_tab = 34
     @center_tab = 25
-    @line_width = @center_tab * 2#- 1
+    @line_width = @center_tab * 2 - 1
   end
   attr_reader :guesses_allowed, :left_tab, :right_tab, :center_tab, :line_width, :all_codes, :all_codes_hash
-  attr_accessor :guesses, :responses, :human_codebreaker, :code, :candidates
-
-  def all_codes
-    list = []
-
-    ('A'..'F').each do |n1|
-      ('A'..'F').each do |n2|
-        ('A'..'F').each do |n3|
-          ('A'..'F').each do |n4|
-            list.push("#{n1}#{n2}#{n3}#{n4}")
-          end
-        end
-      end
-    end
-
-    list
-  end
-
-  def all_codes_hash
-    all_codes.map {|code| [code, code]}.to_h
-  end
-
-  def initial_candidates
-    list = all_codes
-    list.shuffle!
-    starting_guesses = ['AABB', 'CCDD', 'EEFF'].shuffle
-    starting_guesses.map! {|guess| guess.split('').shuffle.join('') }
-    starting_guesses.each { |guess| list.unshift(list.delete(guess))}
-    list
-  end
-
-  def feedback(code_string, guess_string)
-    code = code_string.upcase.split('').first(4)
-    guess = guess_string.upcase.split('').first(4)
-    tally = Hash.new(0)
-
-    guess.each_with_index do |letter, index|
-      right_place = index if letter == code[index]
-      if right_place
-        tally[:right_places] += 1
-        guess[right_place] = nil
-        code[right_place] = nil
-      end
-    end
-    guess.compact!
-    code.compact!
-
-    guess.each_with_index do |letter, index|
-      wrong_place = code.index(letter)
-      if wrong_place
-        tally[:wrong_places] += 1
-        guess[index] = nil
-        code[wrong_place] = nil
-      end
-    end
-    guess.compact!
-    code.compact!
-
-    tally[:extraneous] = guess.length
-
-    ("*" * tally[:right_places]) + ("o" * tally[:wrong_places] + ("." * tally[:extraneous]))
-  end
-
-  def play
-    introduce_game
-    choose_roles
-    play_game
-  end
-
-  def replay
-    initialize
-    choose_roles
-    play_game
-  end
+  attr_accessor :human_codebreaker, :the_code, :candidates, :guesses, :responses
 
   def print_center(*lines, final_whitespace: "\n")
     lines.each_with_index do |line|
@@ -135,6 +62,83 @@ class Game
     menu[choice]
   end
 
+  def all_codes
+    list = []
+
+    ('A'..'F').each do |n1|
+      ('A'..'F').each do |n2|
+        ('A'..'F').each do |n3|
+          ('A'..'F').each do |n4|
+            list.push("#{n1}#{n2}#{n3}#{n4}")
+          end
+        end
+      end
+    end
+
+    list
+  end
+
+  def all_codes_hash
+    all_codes.map {|code| [code, code]}.to_h
+  end
+
+  def initial_candidates
+    list = all_codes
+    list.shuffle!
+    starting_guesses = ['AABB', 'CCDD', 'EEFF'].shuffle
+    starting_guesses.map! {|guess| guess.split('').shuffle.join('') }
+    starting_guesses.each { |guess| list.unshift(list.delete(guess))}
+    list
+  end
+
+  def feedback(guess: guesses.last, code: the_code)
+    guess = guess.upcase.split('').first(4)
+    code = code.upcase.split('').first(4)
+    tally = Hash.new(0)
+
+    guess.each_with_index do |letter, index|
+      right_place = index if letter == code[index]
+      if right_place
+        tally[:right_places] += 1
+        guess[right_place] = nil
+        code[right_place] = nil
+      end
+    end
+    guess.compact!
+    code.compact!
+
+    guess.each_with_index do |letter, index|
+      wrong_place = code.index(letter)
+      if wrong_place
+        tally[:wrong_places] += 1
+        guess[index] = nil
+        code[wrong_place] = nil
+      end
+    end
+    guess.compact!
+    code.compact!
+
+    tally[:extraneous] = guess.length
+
+    ("*" * tally[:right_places]) + ("o" * tally[:wrong_places] + ("." * tally[:extraneous]))
+  end
+
+
+  def play
+    introduce_game
+    choose_roles
+    play_game
+    after_game
+  end
+
+  def replay
+    initialize
+    choose_roles
+    play_game
+    after_game
+  end
+
+
   def introduce_game
     puts
     print_center(
@@ -182,33 +186,17 @@ class Game
       ["M. Make a Code", "     ", "B. Break the Code"]
     )
 
-    self.human_codebreaker = prompt({'B'=>true, 'M'=>false})
+    self.human_codebreaker = prompt({'M'=>false, 'B'=>true})
      puts
   end
 
   def play_game
     make_code
     break_code
-    puts
+    end_of_game
+  end
 
-    if guesses.last == code
-      winner_broke =
-        self.human_codebreaker ?
-        "Congratulations! You broke the" :
-        "\nWhoa! The computer broke your"
-      how_soon = guesses.count > 1 ?
-       "in #{guesses.count} guesses." :
-       "on the first guess!"
-      print "#{winner_broke} code #{how_soon}\n"
-    else
-      print_center(
-        "So close! And yet so far.",
-        "",
-        "The code was #{code}."
-      )
-    end
-
-    puts
+  def after_game
     print_center(
       "Play again?",
       "(Y/N)"
@@ -218,68 +206,83 @@ class Game
     send(action)
   end
 
+
   def make_code
     if human_codebreaker
-      self.code = all_codes.sample
+      self.the_code = all_codes.sample
     else
       print_center("Put your code here:")
-      self.code = prompt(all_codes_hash, prompt: ' ' * (center_tab - 3))
+      self.the_code = prompt(all_codes_hash, prompt: ' ' * (center_tab - 3))
     end
+    puts
   end
 
   def break_code
     print_center(
-      '',
       %w[GUESS (case- FEED-],
       ['', 'insensitive)', 'BACC'],
       ''
     )
     while guesses.count < guesses_allowed
-      puts "Make your final guess!\n" if guesses.count == guesses_allowed - 1
+      puts "Make your final guess!" if guesses_allowed == guesses.count + 1
       guess_code
       respond_to_guess
-      if human_codebreaker
-        print "\n"
-      elsif guesses.count < guesses_allowed && code != guesses.last
-        gets
-      end
-      break if guesses.last == code
-      consolidate_guesses unless human_codebreaker
+      break if guesses.last == the_code
     end
+    puts
   end
 
-  def guess_code
-    if human_codebreaker
-      guesses.push(
-        prompt(
-          all_codes_hash,
-          prompt: "#{guesses.count + 1}. ".rjust(left_tab)
-        )
-      )
+  def end_of_game
+    if guesses.last == the_code
+      winner_broke =
+        self.human_codebreaker ?
+        "Congratulations! You broke the" :
+        "\nWhoa! The computer broke your"
+      how_soon = guesses.count > 1 ?
+        "in #{guesses.count} guesses." :
+        "on the first guess!"
+      print "#{winner_broke} code #{how_soon}\n"
     else
-      print "#{guesses.count + 1}. ".rjust(left_tab)
-      guesses.push(candidates.first || 'WXYZ')
+      print_center(
+        "So close! And yet so far.",
+        "",
+        "The code was #{the_code}."
+      )
+    end
+    puts
+  end
+
+
+  def guess_code
+    aligned_guess_number = "#{guesses.count + 1}. ".rjust(left_tab)
+    if human_codebreaker
+      guess = prompt(all_codes_hash, prompt: aligned_guess_number)
+      guesses.push(guess)
+    else
+      print aligned_guess_number
+      guesses.push(candidates.first)
       print "#{guesses.last}\n"
+      consolidate_guesses
     end
   end
 
   def respond_to_guess
-    responses.push feedback(code, guesses.last)
+    responses.push feedback(guess: guesses.last, code: the_code)
     print_center(
       ['', "`==>", responses.last],
-      final_whitespace: " "
+      final_whitespace: human_codebreaker ? "\n" : " "
     )
+    gets unless human_codebreaker || guesses.last == the_code
   end
 
   def consolidate_guesses
     candidates.shift
-    candidates.each_with_index do |possible_guess, i|
-      unless feedback(possible_guess, guesses.last) == feedback(code, guesses.last)
-        self.candidates[i] = nil
-      end
+    candidates.each_with_index do |candidate, i|
+      self.candidates[i] = nil unless feedback(code: candidate) == feedback(code: the_code)
     end
     candidates.compact!
   end
+
 end
 
 new_game = Game.new
