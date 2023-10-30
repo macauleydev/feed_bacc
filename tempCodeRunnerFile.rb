@@ -1,5 +1,5 @@
-
-    # until %w[M B].include?(choice)
-    #   print "                       "
-    #   choice = gets.chomp.upcase
-    # end
+lines.length == 1
+        print output
+      else
+        puts output
+      end
